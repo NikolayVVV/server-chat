@@ -1,5 +1,5 @@
 package ru.itsjava.services;
 
-public interface Observer {
-    void notifyMe(String message);
+public interface Observer {//Подписчик
+    void notifyMe(String message);//пишет сообщение данному клиенту
 }
