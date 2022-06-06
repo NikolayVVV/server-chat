@@ -2,7 +2,10 @@ package ru.itsjava.services;
 
 import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
+import ru.itsjava.dao.UserDao;
+import ru.itsjava.dao.UserDaoImpl;
 import ru.itsjava.domain.User;
+import ru.itsjava.utils.Props;
 
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
@@ -14,6 +17,7 @@ public class ClientRunnable implements Runnable, Observer {//клиент зах
     private final Socket socket;//финальное поле, потому что у каждого клиента оно будет свое
     private final ServerService serverService;
     private User user;//под каждого clientrunnable будет свой user
+    private final UserDao userDao;
 
     @SneakyThrows
     @Override
@@ -41,7 +45,7 @@ public class ClientRunnable implements Runnable, Observer {//клиент зах
             if (authorizationMessage.startsWith("!autho!")) {
                 String login = authorizationMessage.substring(7).split(":")[0];
                 String password = authorizationMessage.substring(7).split(":")[1];
-                user = new User(login, password);
+                user =  userDao.findByNameAndPassword(login, password);
                 return true;
             }
         }

@@ -1,6 +1,9 @@
 package ru.itsjava.services;
 
 import lombok.SneakyThrows;
+import ru.itsjava.dao.UserDao;
+import ru.itsjava.dao.UserDaoImpl;
+import ru.itsjava.utils.Props;
 
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
@@ -14,6 +17,7 @@ public class ServerServiceImpl implements ServerService {//Это Издател
     //Client Runnable
     public final static int PORT = 8081;
     public final List<Observer> observers = new ArrayList<>();//лист всех тех, кто находится в чате
+    private final UserDao userDao = new UserDaoImpl(new Props());
 
 
     @SneakyThrows
@@ -21,10 +25,11 @@ public class ServerServiceImpl implements ServerService {//Это Издател
     public void start() {
         ServerSocket serverSocket = new ServerSocket(PORT);
         System.out.println("== SERVER STARTS ==");
+
         while (true) {//в бесконечном цикле
             Socket socket = serverSocket.accept();//сделать accept, чт
             if (socket != null) {
-                Thread thread = new Thread(new ClientRunnable(socket, this));
+                Thread thread = new Thread(new ClientRunnable(socket, this, userDao));
                 thread.start();//метод старт запускает новый поток, поэтому когда стартуем запускается метод run
             }
         }
@@ -54,7 +59,7 @@ public class ServerServiceImpl implements ServerService {//Это Издател
                 // который в списке, то мы его пропускаем
                 continue;
             }
-            observer.notifyMe(message);
+            obs.notifyMe(message);
         }
     }
 
