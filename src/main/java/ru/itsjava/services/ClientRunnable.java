@@ -26,14 +26,20 @@ public class ClientRunnable implements Runnable, Observer {//клиент зах
         BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(socket.getInputStream()));//здесь мы
         //считываем сообщения от клиента
         String messageFromClient;
-        if (authorization(bufferedReader)) {
-            serverService.addObserver(this);
-            while ((messageFromClient = bufferedReader.readLine()) != null) {//бесконечно вычитываем сообщения
-                //от клиента и отправляем их на сервер
-                System.out.println(user.getName() + ":" + messageFromClient);//здесь сообщения приходят на сервер
+
+        if (bufferedReader.readLine().equals("1")) {
+            if (authorization(bufferedReader)) {
+                serverService.addObserver(this);
+                while ((messageFromClient = bufferedReader.readLine()) != null) {//бесконечно вычитываем сообщения
+                    //от клиента и отправляем их на сервер
+                    System.out.println(user.getName() + ":" + messageFromClient);//здесь сообщения приходят на сервер
 //                serverService.notifyObservers(user.getName() + ":" + messageFromClient);
-                serverService.notifyObserverExpectMe(user.getName() + ":" + messageFromClient,this);
+                    serverService.notifyObserverExpectMe(user.getName() + ":" + messageFromClient, this);
+                }
             }
+        } else if (bufferedReader.readLine().equals("2")) {
+            if (registration(bufferedReader))
+                serverService.notifyObservers("User added");
         }
     }
 
@@ -45,7 +51,22 @@ public class ClientRunnable implements Runnable, Observer {//клиент зах
             if (authorizationMessage.startsWith("!autho!")) {
                 String login = authorizationMessage.substring(7).split(":")[0];
                 String password = authorizationMessage.substring(7).split(":")[1];
-                user =  userDao.findByNameAndPassword(login, password);
+                user = userDao.findByNameAndPassword(login, password);
+                return true;
+            }
+        }
+        return false;
+    }
+
+    @SneakyThrows
+    private boolean registration(BufferedReader bufferedReader) {
+        String registrationMessage;
+        while ((registrationMessage = bufferedReader.readLine()) != null) {
+            //!regis!login:password
+            if (registrationMessage.startsWith("!regis!")) {
+                String name = registrationMessage.substring(7).split(":")[0];
+                String password = registrationMessage.substring(7).split(":")[1];
+                userDao.creationUser(name, password);
                 return true;
             }
         }

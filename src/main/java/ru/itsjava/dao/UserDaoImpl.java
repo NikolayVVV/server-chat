@@ -2,6 +2,7 @@ package ru.itsjava.dao;
 
 import lombok.AllArgsConstructor;
 import ru.itsjava.domain.User;
+import ru.itsjava.exception.UserNotFoundException;
 import ru.itsjava.utils.Props;
 
 import java.sql.*;
@@ -13,7 +14,7 @@ public class UserDaoImpl implements UserDao {
 
 
     @Override
-    public User findByNameAndPassword(String name, String passsword) {
+    public User findByNameAndPassword(String name, String password) {
         try (Connection connection = DriverManager.getConnection(
                 props.getValue("db.url"),
                 props.getValue("db.login"),
@@ -24,7 +25,7 @@ public class UserDaoImpl implements UserDao {
                             "where name = ? and password = ?;");
 
             preparedStatement.setString(1, name);
-            preparedStatement.setString(2, passsword);
+            preparedStatement.setString(2, password);
 
             ResultSet resultSet = preparedStatement.executeQuery();
             resultSet.next();
@@ -32,14 +33,38 @@ public class UserDaoImpl implements UserDao {
             int userCount = resultSet.getInt("cnt");
 
             if (userCount == 1) {
-                return new User(name, passsword);
+                return new User(name, password);
             }
 
         } catch (SQLException throwables) {
             throwables.printStackTrace();
         }
 
-        throw new RuntimeException("User not found!");
+        throw new UserNotFoundException("User not found!");
     }
+
+    @Override
+    public void creationUser(String name, String password) {
+        String insertSQL = "insert into schema_online_course.users" +
+                "(name, password) values (?, ?);";
+        try (Connection connection = DriverManager.getConnection(
+                props.getValue("db.url"),
+                props.getValue("db.login"),
+                props.getValue("db.password"));
+        ) {
+            PreparedStatement preparedStatement = connection
+                    .prepareStatement(insertSQL);
+            preparedStatement.setString(1, name);
+            preparedStatement.setString(2, password);
+
+            int insertRows = preparedStatement.executeUpdate();
+            System.out.println("User added");
+
+        } catch (SQLException throwables) {
+            throwables.printStackTrace();
+        }
+    }
+
+
 }
 
