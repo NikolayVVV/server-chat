@@ -36,7 +36,12 @@ public class ClientRunnable implements Runnable, Observer {//клиент зах
 //                serverService.notifyObservers(user.getName() + ":" + messageFromClient);
                     serverService.notifyObserverExpectMe(user.getName() + ":" + messageFromClient, this);
                 }
+            } else if (nameAndPasswordAreNotFound(bufferedReader) == 0) {
+                PrintWriter clientWriter = new PrintWriter(socket.getOutputStream());
+                clientWriter.println("Неправильный логин или пароль");
+                clientWriter.flush();
             }
+
         } else if (bufferedReader.readLine().equals("2")) {
             if (registration(bufferedReader))
                 serverService.notifyObservers("User added");
@@ -56,6 +61,21 @@ public class ClientRunnable implements Runnable, Observer {//клиент зах
             }
         }
         return false;
+    }
+
+    @SneakyThrows
+    private int nameAndPasswordAreNotFound(BufferedReader bufferedReader) {
+        String authorizationMessage;
+        while ((authorizationMessage = bufferedReader.readLine()) != null) {
+            if (authorizationMessage.startsWith("!autho!")) {
+                String login = authorizationMessage.substring(7).split(":")[0];
+                String password = authorizationMessage.substring(7).split(":")[1];
+                if (userDao.NameAndPasswordAreNotFound(login, password) == 0) {
+                    return 0;
+                }
+            }
+        }
+        return -1;
     }
 
     @SneakyThrows
