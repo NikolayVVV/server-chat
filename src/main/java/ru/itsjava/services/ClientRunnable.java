@@ -2,10 +2,13 @@ package ru.itsjava.services;
 
 import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import ru.itsjava.Application;
+import ru.itsjava.dao.MessageDao;
 import ru.itsjava.dao.UserDao;
-import ru.itsjava.dao.UserDaoImpl;
 import ru.itsjava.domain.User;
-import ru.itsjava.utils.Props;
+import ru.itsjava.exception.UserNotFoundException;
 
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
@@ -18,6 +21,8 @@ public class ClientRunnable implements Runnable, Observer {//клиент зах
     private final ServerService serverService;
     private User user;//под каждого clientrunnable будет свой user
     private final UserDao userDao;
+    private final MessageDao messageDao;
+    private static final Logger log = LoggerFactory.getLogger(Application.class);
 
     @SneakyThrows
     @Override
@@ -30,22 +35,40 @@ public class ClientRunnable implements Runnable, Observer {//клиент зах
         if (bufferedReader.readLine().equals("1")) {
             if (authorization(bufferedReader)) {
                 serverService.addObserver(this);
+                notifyMe("Вы успешно авторизованы, для просмотра последних ссобщений введите last messages");
                 while ((messageFromClient = bufferedReader.readLine()) != null) {//бесконечно вычитываем сообщения
                     //от клиента и отправляем их на сервер
                     System.out.println(user.getName() + ":" + messageFromClient);//здесь сообщения приходят на сервер
+                    if (messageFromClient.equals("last messages")) {
+                        notifyMe(messageDao.showMessages());
+                    }
+//                    messageDao.writeMessage(messageFromClient, user.getName(), "all");
 //                serverService.notifyObservers(user.getName() + ":" + messageFromClient);
                     serverService.notifyObserverExpectMe(user.getName() + ":" + messageFromClient, this);
                 }
-            } else if (nameAndPasswordAreNotFound(bufferedReader) == 0) {
-                PrintWriter clientWriter = new PrintWriter(socket.getOutputStream());
-                clientWriter.println("Неправильный логин или пароль");
-                clientWriter.flush();
+            } else {
+                log.debug("Был введен неверный пароль");
+                notifyMe("Неправильный логин или пароль...Попробуйте еще раз");
             }
-
+        } else if (bufferedReader.readLine().equals("3")) {
+            if (authorizationPrivateCorrespondence(bufferedReader)) {
+                serverService.addObserverInPrivateCorrespondence(this);
+                notifyMe("Вы успешно авторизованы");
+                while ((messageFromClient = bufferedReader.readLine()) != null) {
+                    System.out.println(user.getName() + ":" + messageFromClient);//вывод сообщений на сервере
+                    serverService.notifyObserversInPrivateCorrespondenceExpectMe(
+                            user.getName() + ":" + messageFromClient, this);
+                }
+            } else {
+                notifyMe("Вы не имеете доступ к личной переписке");
+            }
         } else if (bufferedReader.readLine().equals("2")) {
             if (registration(bufferedReader))
-                serverService.notifyObservers("User added");
+                notifyMe("Пользователь зарегистрирован");
+            serverService.notifyObservers("User added");
         }
+
+
     }
 
     @SneakyThrows
@@ -56,27 +79,18 @@ public class ClientRunnable implements Runnable, Observer {//клиент зах
             if (authorizationMessage.startsWith("!autho!")) {
                 String login = authorizationMessage.substring(7).split(":")[0];
                 String password = authorizationMessage.substring(7).split(":")[1];
-                user = userDao.findByNameAndPassword(login, password);
-                return true;
+                try {
+                    user = userDao.findByNameAndPassword(login, password);
+                    return true;
+                } catch (UserNotFoundException userNotFoundException) {
+                    System.out.println("don't find user in DB");
+                    return false;
+                }
             }
         }
         return false;
     }
 
-    @SneakyThrows
-    private int nameAndPasswordAreNotFound(BufferedReader bufferedReader) {
-        String authorizationMessage;
-        while ((authorizationMessage = bufferedReader.readLine()) != null) {
-            if (authorizationMessage.startsWith("!autho!")) {
-                String login = authorizationMessage.substring(7).split(":")[0];
-                String password = authorizationMessage.substring(7).split(":")[1];
-                if (userDao.NameAndPasswordAreNotFound(login, password) == 0) {
-                    return 0;
-                }
-            }
-        }
-        return -1;
-    }
 
     @SneakyThrows
     private boolean registration(BufferedReader bufferedReader) {
@@ -92,6 +106,29 @@ public class ClientRunnable implements Runnable, Observer {//клиент зах
         }
         return false;
     }
+
+
+    @SneakyThrows
+    private boolean authorizationPrivateCorrespondence(BufferedReader bufferedReader) {
+        String authorizationMessage;
+        while ((authorizationMessage = bufferedReader.readLine()) != null) {
+            //!autho!login:password
+            if (authorizationMessage.startsWith("!autho!")) {
+                String login = authorizationMessage.substring(7).split(":")[0];
+                String password = authorizationMessage.substring(7).split(":")[1];
+                try {
+                    user = userDao.findByNameAndPassword(login, password);
+                    if (user.getName().equals("U2") || user.getName().equals("USER"))
+                        return true;
+                } catch (UserNotFoundException userNotFoundException) {
+                    System.out.println("don't find user in DB");
+                    return false;
+                }
+            }
+        }
+        return false;
+    }
+
 
     @SneakyThrows
     @Override

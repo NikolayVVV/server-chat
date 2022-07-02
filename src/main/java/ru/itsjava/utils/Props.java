@@ -14,7 +14,7 @@ public class Props {
         properties.load(Props.class.getClassLoader().getResourceAsStream("application.properties"));
     }
 
-    public String getValue(String key){
+    public String getValue(String key) {
         return properties.getProperty(key);
     }
 }

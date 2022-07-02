@@ -6,12 +6,15 @@ import ru.itsjava.domain.User;
 import ru.itsjava.services.ServerService;
 import ru.itsjava.services.ServerServiceImpl;
 import ru.itsjava.utils.Props;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 
 public class Application {
-
+    private static final Logger log = LoggerFactory.getLogger(Application.class);
 
     public static void main(String[] args) {
+        log.debug("Ошибок нет");
         ServerService serverService = new ServerServiceImpl();
         serverService.start();
 
